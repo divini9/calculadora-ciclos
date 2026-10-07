@@ -1,0 +1,274 @@
+<!DOCTYPE html> 
+<html lang="pt-BR"> 
+<head> 
+  <meta charset="UTF-8"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <title>Calculadora Trigonométrica</title> 
+  <link rel="manifest" href="manifest.json"> 
+  <meta name="theme-color" content="#2563eb"> 
+  <style> 
+    :root { 
+      --bg-color: #f8fafc; 
+      --card-bg: #ffffff; 
+      --text-color: #1e293b; 
+      --primary: #2563eb; 
+      --border: #e2e8f0; 
+    } 
+    @media (prefers-color-scheme: dark) { 
+      :root { 
+        --bg-color: #0f172a; 
+        --card-bg: #1e293b; 
+        --text-color: #f8fafc; 
+        --border: #334155; 
+      } 
+    } 
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+      background-color: var(--bg-color); 
+      color: var(--text-color); 
+      margin: 0; 
+      padding: 16px; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      min-height: 100vh; 
+      box-sizing: border-box; 
+    } 
+    .container { 
+      width: 100%; 
+      max-width: 400px; 
+      background: var(--card-bg); 
+      padding: 24px; 
+      border-radius: 16px; 
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
+      border: 1px solid var(--border); 
+      box-sizing: border-box; 
+    } 
+    h1 { 
+      font-size: 1.5rem; 
+      text-align: center; 
+      margin-top: 0; 
+    } 
+    .input-group { 
+      margin-bottom: 20px; 
+    } 
+    label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: 500; 
+      font-size: 0.9rem; 
+    } 
+    input { 
+      width: 100%; 
+      padding: 12px; 
+      border-radius: 8px; 
+      border: 1px solid var(--border); 
+      background: var(--bg-color); 
+      color: var(--text-color); 
+      font-size: 1rem; 
+      box-sizing: border-box; 
+    } 
+    .canvas-container { 
+      display: flex; 
+      justify-content: center; 
+      margin: 20px 0; 
+    } 
+    canvas { 
+      background: var(--bg-color); 
+      border-radius: 50%; 
+      border: 1px solid var(--border); 
+    } 
+    .results { 
+      background: var(--bg-color); 
+      padding: 16px; 
+      border-radius: 8px; 
+      border: 1px solid var(--border); 
+    } 
+    .result-item { 
+      display: flex; 
+      justify-content: space-between; 
+      margin-bottom: 8px; 
+      font-size: 1.05rem; 
+    } 
+    .result-item:last-child { 
+      margin-bottom: 0; 
+    } 
+    .label { 
+      font-weight: bold; 
+      color: var(--primary); 
+    } 
+    #installBtn { 
+      display: none; 
+      width: 100%; 
+      padding: 12px; 
+      background: var(--primary); 
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      font-size: 1rem; 
+      font-weight: bold; 
+      margin-top: 16px; 
+      cursor: pointer; 
+    } 
+  </style> 
+</head> 
+<body> 
+  <div class="container"> 
+    <h1>Ciclo Trigonométrico</h1> 
+    <div class="input-group"> 
+      <label for="entrada">Ângulo (Graus ou Radianos):</label> 
+      <input type="text" id="entrada" placeholder="Ex: 2496 pi / 7 rad, 19pi/4, 7777"> 
+    </div> 
+    <div class="canvas-container"> 
+      <canvas id="circle" width="200" height="200"></canvas> 
+    </div> 
+    <div class="results"> 
+      <div class="result-item"><span class="label">Voltas:</span> <span id="resVoltas">0</span></div> 
+      <div class="result-item"><span class="label">Graus:</span> <span id="resGraus">0°</span></div> 
+      <div class="result-item"><span class="label">Radianos:</span> <span id="resRad">0.0000 rad</span></div> 
+      <div class="result-item"><span class="label">Fração π:</span> <span id="resPi">0 rad</span></div> 
+    </div> 
+    <button id="installBtn">Instalar no Telefone</button> 
+  </div> 
+
+  <script> 
+    if ('serviceWorker' in navigator) { 
+      navigator.serviceWorker.register('sw.js').catch(err => console.log("SW erro:", err)); 
+    } 
+
+    function processarEntrada(valor) { 
+      let texto = String(valor).replace(/\s+/g, "").toLowerCase(); 
+      if (!texto) return 0; 
+      if (texto.includes("pi") || texto.includes("rad")) { 
+        texto = texto.replace("rad", ""); 
+        if (texto === "pi") return 180.0; 
+        if (texto.includes("/")) { 
+          let partes = texto.split("/"); 
+          let numStr = partes[0].replace("pi", ""); 
+          let denStr = partes[1]; 
+          let num = numStr === "" ? 1.0 : parseFloat(numStr); 
+          let den = parseFloat(denStr); 
+          return (num / den) * 180; 
+        } else { 
+          let numStr = texto.replace("pi", ""); 
+          let num = numStr === "" ? 1.0 : parseFloat(numStr); 
+          return num * 180; 
+        } 
+      } 
+      return parseFloat(texto) || 0; 
+    } 
+
+    function gcd(a, b) { 
+      return b ? gcd(b, a % b) : a; 
+    } 
+
+    function calcular() { 
+      const inputVal = document.getElementById('entrada').value; 
+      const angulo = processarEntrada(inputVal); 
+      const ciclo = 360; 
+
+      // Cálculo da quantidade de voltas completas
+      let voltas = Math.floor(angulo / ciclo); 
+      if (angulo < 0) {
+        voltas = Math.ceil(angulo / ciclo);
+      }
+
+      let restoGraus = angulo % ciclo; 
+      if (restoGraus < 0) restoGraus += ciclo; 
+      if (Math.abs(restoGraus - ciclo) < 1e-9) restoGraus = 0.0; 
+
+      let restoRadianos = (restoGraus * Math.PI) / 180; 
+
+      // Exibição da quantidade de voltas
+      document.getElementById('resVoltas').innerText = voltas; 
+
+      // Formatação de saída em Graus 
+      let exibicaoGraus = Number.isInteger(restoGraus) ? parseInt(restoGraus) : restoGraus.toFixed(2); 
+      document.getElementById('resGraus').innerText = `${exibicaoGraus}°`; 
+
+      // Formatação de saída em Radianos 
+      document.getElementById('resRad').innerText = `${restoRadianos.toFixed(4)} rad`; 
+
+      // Formatação da Fração de Pi (π) 
+      let numerador = Math.round(restoGraus); 
+      let denominador = 180; 
+      let saidaPi = ""; 
+      if (Math.abs(restoGraus - numerador) > 1e-4) { 
+        saidaPi = `${(restoGraus / 180).toFixed(4)}π rad`; 
+      } else { 
+        let mdc = gcd(Math.abs(numerador), denominador); 
+        let numSimplificado = numerador / mdc; 
+        let denSimplificado = denominador / mdc; 
+        if (numSimplificado === 0) { 
+          saidaPi = "0 rad"; 
+        } else if (denSimplificado === 1) { 
+          saidaPi = `${numSimplificado}π rad`; 
+        } else { 
+          saidaPi = `${numSimplificado}π / ${denSimplificado} rad`; 
+        } 
+      } 
+      document.getElementById('resPi').innerText = saidaPi; 
+
+      desenharCirculo(restoGraus); 
+    } 
+
+    function desenharCirculo(graus) { 
+      const canvas = document.getElementById('circle'); 
+      const ctx = canvas.getContext('2d'); 
+      const cx = 100, cy = 100, r = 80; 
+      ctx.clearRect(0, 0, 200, 200); 
+
+      ctx.beginPath(); 
+      ctx.arc(cx, cy, r, 0, 2 * Math.PI); 
+      ctx.strokeStyle = '#94a3b8'; 
+      ctx.lineWidth = 2; 
+      ctx.stroke(); 
+
+      ctx.beginPath(); 
+      ctx.moveTo(cx - r - 10, cy); 
+      ctx.lineTo(cx + r + 10, cy); 
+      ctx.moveTo(cx, cy - r - 10); 
+      ctx.lineTo(cx, cy + r + 10); 
+      ctx.strokeStyle = '#cbd5e1'; 
+      ctx.lineWidth = 1; 
+      ctx.stroke(); 
+
+      let rad = (graus * Math.PI) / 180; 
+      let px = cx + r * Math.cos(rad); 
+      let py = cy - r * Math.sin(rad); 
+
+      ctx.beginPath(); 
+      ctx.moveTo(cx, cy); 
+      ctx.lineTo(px, py); 
+      ctx.strokeStyle = '#2563eb'; 
+      ctx.lineWidth = 3; 
+      ctx.stroke(); 
+
+      ctx.beginPath(); 
+      ctx.arc(px, py, 5, 0, 2 * Math.PI); 
+      ctx.fillStyle = '#ef4444'; 
+      ctx.fill(); 
+    } 
+
+    document.getElementById('entrada').addEventListener('input', calcular); 
+    calcular(); 
+
+    let deferredPrompt; 
+    window.addEventListener('beforeinstallprompt', (e) => { 
+      e.preventDefault(); 
+      deferredPrompt = e; 
+      document.getElementById('installBtn').style.display = 'block'; 
+    }); 
+
+    document.getElementById('installBtn').addEventListener('click', async () => { 
+      if (deferredPrompt) { 
+        deferredPrompt.prompt(); 
+        const { outcome } = await deferredPrompt.userChoice; 
+        if (outcome === 'accepted') { 
+          document.getElementById('installBtn').style.display = 'none'; 
+        } 
+        deferredPrompt = null; 
+      } 
+    }); 
+  </script> 
+</body> </html>
